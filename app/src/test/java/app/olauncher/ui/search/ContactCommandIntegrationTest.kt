@@ -1,6 +1,9 @@
 package app.olauncher.ui.search
 
 import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.pm.ApplicationInfo
+import android.content.pm.ResolveInfo
 import android.os.Bundle
 import android.os.Looper
 import android.view.View
@@ -212,6 +215,47 @@ class ContactCommandIntegrationTest {
             fragment.requireView().findViewById<SearchView>(R.id.search).setQuery("m john", true)
             awaitCommand { shadowOf(activity).peekNextStartedActivity() != null }
             assertEquals(Intent.ACTION_SENDTO, shadowOf(activity).nextStartedActivity.action)
+        }
+    }
+
+    @Test
+    fun `Enter on command without name opens corresponding app and typing alone does not`() {
+        for (command in ContactCommand.entries) {
+            for (text in listOf(command.letter.toString(), "${command.letter.uppercaseChar()}   ")) {
+                withSearch { activity, fragment, _ ->
+                    if (command == ContactCommand.WHATSAPP) {
+                        val launch = Intent(Intent.ACTION_MAIN)
+                            .addCategory(Intent.CATEGORY_LAUNCHER).setPackage("com.whatsapp")
+                        shadowOf(activity.packageManager).addResolveInfoForIntent(launch, ResolveInfo().apply {
+                            activityInfo = ActivityInfo().apply {
+                                packageName = "com.whatsapp"
+                                name = "com.whatsapp.Main"
+                                enabled = true
+                                exported = true
+                                applicationInfo = ApplicationInfo().apply {
+                                    packageName = "com.whatsapp"
+                                    enabled = true
+                                }
+                            }
+                        })
+                    }
+                    query(fragment, text)
+                    shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+                    assertNull(shadowOf(activity).peekNextStartedActivity())
+                    fragment.requireView().findViewById<SearchView>(R.id.search).setQuery(text, true)
+                    awaitCommand { shadowOf(activity).peekNextStartedActivity() != null }
+                    val intent = shadowOf(activity).nextStartedActivity
+                    when (command) {
+                        ContactCommand.PHONE -> assertEquals(Intent.ACTION_DIAL, intent.action)
+                        ContactCommand.MESSAGE -> assertTrue(intent.categories.contains(Intent.CATEGORY_APP_MESSAGING))
+                        ContactCommand.WHATSAPP -> assertEquals("com.whatsapp", intent.component?.packageName)
+                        ContactCommand.CONTACT -> assertTrue(intent.categories.contains(Intent.CATEGORY_APP_CONTACTS))
+                    }
+                    assertNull(intent.data)
+                    shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+                    assertNull(shadowOf(activity).peekNextStartedActivity())
+                }
+            }
         }
     }
 

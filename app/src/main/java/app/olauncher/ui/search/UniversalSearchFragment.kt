@@ -1033,6 +1033,15 @@ class UniversalSearchFragment : BaseFragment(), SearchActions {
     }
 
     private fun submit(text: String) {
+        if (mode == SearchMode.CONTACTS_ONLY) {
+            val letter = text.trim().singleOrNull()?.lowercaseChar()
+            ContactCommand.entries.firstOrNull { it.letter == letter }?.let { command ->
+                cancelAutomaticCommand()
+                activePopupWindow?.dismiss()
+                commandExecutor?.openApp(command)
+                return
+            }
+        }
         if (mode == SearchMode.ENGINES_ONLY && SearchEngines.SearchEngineCommandQuery.parse(text) != null) return
         if (mode == SearchMode.APPS_ONLY && AppCommandQuery.parse(text) != null) {
             appCommandJob?.cancel()

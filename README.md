@@ -91,6 +91,10 @@ case-insensitive and require a space after the letter. Normal searching, tile
 layouts, long-press details, and existing shortcut buttons are unchanged.
 The Contacts heading shows a compact command indicator beneath its title when enabled.
 
+Press Enter on just `p`, `m`, `w`, or `c` (optionally followed by spaces) to open
+the phone, messaging, WhatsApp, or contacts app without selecting a contact.
+Typing a command alone never opens an app automatically.
+
 Type at least two name characters and a unique match opens after 250 ms by
 default. Further typing, ambiguous results, loading contacts, composing text,
 or leaving the page cancels automatic execution. A command is handled once
