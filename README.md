@@ -26,6 +26,12 @@ License: [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 ### ACES search pages and appearance
 
+The home screen's bottom bar opens Command search using Search Anything and keeps
+the ACES panel styling. Tap the separate circle to cycle through time, battery,
+and date (for example, `Mon` / `05 Jan`); these displays do not open apps yet.
+Hold the circle, drag, and release to place it. Its position is saved and adapts
+to screen size and system insets, staying above the command search bar.
+
 Apps, Contacts, Search Engines, and Search Anything use a black page with a
 pill-shaped search field, a fixed icon/title/results heading, and rounded charcoal
 result tiles. Each result has a type label and a separate three-dot action menu.

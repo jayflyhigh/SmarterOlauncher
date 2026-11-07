@@ -125,8 +125,18 @@ class Prefs(context: Context) {
 
     private val SEARCH_ENGINES = "SEARCH_ENGINES"
     private val HOME_WIDGETS = "HOME_WIDGETS"
+    private val HOME_WIDGET_CIRCLE_X = "HOME_WIDGET_CIRCLE_X"
+    private val HOME_WIDGET_CIRCLE_Y = "HOME_WIDGET_CIRCLE_Y"
 
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_FILENAME, 0)
+
+    var homeWidgetCircleX: Float
+        get() = prefs.getFloat(HOME_WIDGET_CIRCLE_X, 1f)
+        set(value) = prefs.edit { putFloat(HOME_WIDGET_CIRCLE_X, value) }
+
+    var homeWidgetCircleY: Float
+        get() = prefs.getFloat(HOME_WIDGET_CIRCLE_Y, 0f)
+        set(value) = prefs.edit { putFloat(HOME_WIDGET_CIRCLE_Y, value) }
 
     var firstOpen: Boolean
         get() = prefs.getBoolean(FIRST_OPEN, true)

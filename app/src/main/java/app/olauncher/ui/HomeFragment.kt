@@ -64,6 +64,7 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private var quickActions: QuickActionsMenu? = null
+    private var homeWidget: HomeWidget? = null
     private var batteryReceiverRegistered = false
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -89,9 +90,12 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
         setHomeAlignment(prefs.homeAlignment)
         initSwipeTouchListener()
         initClickListeners()
+        homeWidget = HomeWidget(binding.homeWidget, prefs)
         ViewCompat.setOnApplyWindowInsetsListener(binding.homeWidget.root) { _, insets ->
             val nav = insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars())
             val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+            val status = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            homeWidget?.applyInsets(max(nav.left, cutout.left), max(status.top, cutout.top), max(nav.right, cutout.right))
             val params = binding.homeWidget.homeWidgetPanel.layoutParams as ViewGroup.MarginLayoutParams
             val left = 12.dpToPx() + max(nav.left, cutout.left)
             val right = 12.dpToPx() + max(nav.right, cutout.right)
@@ -161,9 +165,7 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
             // R.id.recents -> {}
             R.id.clock -> openClockApp()
             R.id.date -> openCalendarApp()
-            R.id.widgetHour, R.id.widgetMinute, R.id.widgetAmPm -> openClockApp()
-            R.id.widgetBattery -> openBatteryApp()
-            R.id.widgetDate -> openCalendarApp()
+            R.id.widgetCommandSearch -> openSwipeSearch(SearchMode.ALL_SEARCH)
             R.id.setDefaultLauncher -> viewModel.resetLauncherLiveData.call()
             R.id.tvScreenTime -> openScreenTimeDigitalWellbeing()
 
@@ -265,27 +267,6 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
             }
             R.id.date -> chooseCalendarApp()
 
-            R.id.widgetHour, R.id.widgetMinute, R.id.widgetAmPm -> {
-                showAppList(Constants.FLAG_SET_CLOCK_APP)
-                prefs.clockAppPackage = ""
-                prefs.clockAppClassName = ""
-                prefs.clockAppUser = ""
-            }
-
-            R.id.widgetDate -> {
-                showAppList(Constants.FLAG_SET_CALENDAR_APP)
-                prefs.calendarAppPackage = ""
-                prefs.calendarAppClassName = ""
-                prefs.calendarAppUser = ""
-            }
-
-            R.id.widgetBattery -> {
-                showAppList(Constants.FLAG_SET_BATTERY_APP)
-                prefs.batteryAppPackage = ""
-                prefs.batteryAppClassName = ""
-                prefs.batteryAppUser = ""
-            }
-
             R.id.tvScreenTime -> {
                 showAppList(Constants.FLAG_SET_SCREEN_TIME_APP)
                 prefs.screenTimeAppPackage = ""
@@ -366,13 +347,7 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
         binding.setDefaultLauncher.setOnLongClickListener(this)
         binding.tvScreenTime.setOnClickListener(this)
         binding.tvScreenTime.setOnLongClickListener(this)
-        listOf(
-            binding.homeWidget.widgetHour,
-            binding.homeWidget.widgetMinute,
-            binding.homeWidget.widgetAmPm,
-            binding.homeWidget.widgetBattery,
-            binding.homeWidget.widgetDate,
-        ).forEach { it.setOnTouchListener(getViewSwipeTouchListener(requireContext(), it)) }
+        binding.homeWidget.widgetCommandSearch.setOnClickListener(this)
 
         // These fire only on d-pad/keyboard events; touch is consumed by ViewSwipeTouchListener
         binding.homeApp1.setOnClickListener(this)
@@ -893,6 +868,7 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
     override fun onDestroyView() {
         super.onDestroyView()
         quickActions = null
+        homeWidget = null
         _binding = null
     }
 }
