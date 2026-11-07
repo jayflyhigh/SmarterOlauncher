@@ -20,6 +20,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
@@ -90,6 +91,18 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
         initSwipeTouchListener()
         initClickListeners()
         homeWidget = HomeWidget(binding.homeWidget, prefs)
+        val resizeBackCallback = object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() {
+                homeWidget?.hideResize()
+            }
+        }
+        homeWidget?.onResizeVisibilityChanged = { visible ->
+            resizeBackCallback.remove()
+            resizeBackCallback.isEnabled = visible
+            if (visible) {
+                requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, resizeBackCallback)
+            }
+        }
         ViewCompat.setOnApplyWindowInsetsListener(binding.homeWidget.root) { _, insets ->
             val nav = insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars())
             val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())

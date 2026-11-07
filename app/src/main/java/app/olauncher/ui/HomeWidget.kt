@@ -10,9 +10,13 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.text.format.DateFormat
+import android.util.TypedValue
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
+import android.view.ViewGroup
+import android.widget.SeekBar
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.core.view.isVisible
@@ -23,6 +27,8 @@ import app.olauncher.helper.dpToPx
 import app.olauncher.helper.isEinkDisplay
 import app.olauncher.helper.isSystemAnimationsDisabled
 import kotlin.math.min
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class HomeWidget(
     private val binding: LayoutHomeWidgetBinding,
@@ -31,6 +37,8 @@ class HomeWidget(
     private val circle = binding.widgetCircle
     private var display = 0
     private var dragging = false
+    private val touchSlop = ViewConfiguration.get(circle.context).scaledTouchSlop
+    var onResizeVisibilityChanged: (Boolean) -> Unit = {}
     private var downX = 0f
     private var downY = 0f
     private var startX = 0f
@@ -53,9 +61,36 @@ class HomeWidget(
         override fun onLongPress(event: MotionEvent) {
             circle.performLongClick()
         }
+
+        override fun onScroll(first: MotionEvent?, current: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+            if (first == null || dragging) return false
+            val dy = current.y - first.y
+            val dx = current.x - first.x
+            if (dy < -touchSlop * 2 && abs(dy) > abs(dx)) {
+                showResize()
+                return true
+            }
+            return false
+        }
     })
 
     init {
+        binding.widgetSizeSlider.progress = prefs.homeWidgetCircleSize - 56
+        binding.widgetSizeSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                prefs.homeWidgetCircleSize = progress + 56
+                applySize()
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
+        })
+        binding.widgetResizeOutside.setOnClickListener { hideResize() }
+        binding.widgetResizeDone.setOnClickListener { hideResize() }
+        ViewCompat.addAccessibilityAction(circle, circle.context.getString(R.string.widget_circle_size)) { _, _ ->
+            showResize()
+            true
+        }
         binding.widgetChargingGlow.background = ChargingGlowDrawable()
         circle.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(view: View) = updateChargingGlow()
@@ -107,6 +142,8 @@ class HomeWidget(
             true
         }
         binding.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> restorePosition() }
+        circle.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> restorePosition() }
+        applySize()
         updateDisplay()
         updateTimeFormat()
     }
@@ -114,6 +151,7 @@ class HomeWidget(
     fun setActive(value: Boolean) {
         active = value
         if (active) updateTimeFormat()
+        else hideResize()
         updateChargingGlow()
     }
 
@@ -154,7 +192,49 @@ class HomeWidget(
         safeTop = top
         safeRight = right
         safeBottom = bottom
+        val params = binding.widgetResizePanel.layoutParams as ViewGroup.MarginLayoutParams
+        params.setMargins(left + 12.dpToPx(), top + 12.dpToPx(), right + 12.dpToPx(), bottom + 12.dpToPx())
+        binding.widgetResizePanel.layoutParams = params
         restorePosition()
+    }
+
+    private fun showResize() {
+        if (binding.widgetResizePanel.isVisible) return
+        binding.widgetResizeOutside.isVisible = true
+        binding.widgetResizePanel.isVisible = true
+        onResizeVisibilityChanged(true)
+    }
+
+    fun hideResize() {
+        binding.widgetResizeOutside.isVisible = false
+        binding.widgetResizePanel.isVisible = false
+        onResizeVisibilityChanged(false)
+    }
+
+    private fun applySize() {
+        val size = prefs.homeWidgetCircleSize
+        val scale = size / 112f
+        circle.layoutParams = circle.layoutParams.apply {
+            width = size.dpToPx()
+            height = width
+        }
+        val padding = (12.dpToPx() * scale).roundToInt()
+        circle.setPadding(padding, padding, padding, padding)
+        listOf(
+            binding.widgetTimeValue to 28f,
+            binding.widgetAmPm to 14f,
+            binding.widgetDay to 28f,
+            binding.widgetDateValue to 16f,
+            binding.widgetBatteryPercent to 32f,
+        ).forEach { (text, baseSize) -> text.setTextSize(TypedValue.COMPLEX_UNIT_SP, baseSize * scale) }
+        binding.widgetBatteryIcon.layoutParams = binding.widgetBatteryIcon.layoutParams.apply {
+            width = (16.dpToPx() * scale).roundToInt()
+            height = width
+        }
+        binding.widgetChargingGlow.layoutParams = binding.widgetChargingGlow.layoutParams.apply {
+            width = (136.dpToPx() * scale).roundToInt()
+            height = width
+        }
     }
 
     private fun updateDisplay() {
@@ -171,8 +251,9 @@ class HomeWidget(
     private fun place(x: Float, y: Float) {
         circle.x = x.coerceIn(minX(), maxX())
         circle.y = y.coerceIn(minY(), maxY())
-        binding.widgetChargingGlow.x = circle.x - 12.dpToPx()
-        binding.widgetChargingGlow.y = circle.y - 12.dpToPx()
+        val glowOffset = (binding.widgetChargingGlow.layoutParams.width - circle.width) / 2f
+        binding.widgetChargingGlow.x = circle.x - glowOffset
+        binding.widgetChargingGlow.y = circle.y - glowOffset
     }
 
     private fun restorePosition() {

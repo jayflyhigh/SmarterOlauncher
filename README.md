@@ -32,6 +32,10 @@ and date (for example, `Mon` / `05 Jan`); these displays do not open apps yet.
 Hold the circle, drag, and release to place it. Its position is saved and adapts
 to screen size and system insets, allowing placement across the home screen
 while staying clear of system bars and display cutouts.
+Swipe up on the circle to open a compact, single-row slider and Done button
+above the navigation bar. Resize
+from 56 to 280 dp with proportionally scaled readings, icon, padding, and glow.
+The size is saved; dismiss the slider with Done, Back, or a tap outside.
 The circle uses large time, weekday, and battery readings with smaller AM/PM,
 date, and battery-icon details. While charging, a green halo pulses around the
 circle on the visible home screen. With system animations disabled or on an

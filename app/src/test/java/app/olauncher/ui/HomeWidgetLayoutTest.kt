@@ -87,8 +87,9 @@ class HomeWidgetLayoutTest {
     }
 
     @Test
-    fun `widget has only circle and glow and retains clock and abbreviated date formats`() {
-        assertEquals(2, (binding.root as ViewGroup).childCount)
+    fun `widget has circle and glow with resize controls hidden and retains clock and abbreviated date formats`() {
+        assertEquals(View.GONE, binding.widgetResizePanel.visibility)
+        assertEquals(View.GONE, binding.widgetResizeOutside.visibility)
         assertEquals(binding.widgetCircle.layoutParams.width, binding.widgetCircle.layoutParams.height)
         assertEquals("hh:mm", binding.widgetTimeValue.format12Hour.toString())
         assertEquals("HH:mm", binding.widgetTimeValue.format24Hour.toString())
@@ -99,6 +100,111 @@ class HomeWidgetLayoutTest {
         assertEquals("dd MMM", binding.widgetDateValue.format12Hour.toString())
         assertEquals("dd MMM", binding.widgetDateValue.format24Hour.toString())
         assertWithinScreen()
+    }
+
+    private fun swipeUpCircle() {
+        val x = binding.widgetCircle.x + binding.widgetCircle.width / 2
+        val y = binding.widgetCircle.y + binding.widgetCircle.height / 2
+        touch(MotionEvent.ACTION_DOWN, x, y)
+        touch(MotionEvent.ACTION_MOVE, x, y - 80)
+        touch(MotionEvent.ACTION_UP, x, y - 80)
+    }
+
+    @Test
+    fun `swipe up opens bottom slider without cycling or dragging and dismisses outside or Done`() {
+        val x = binding.widgetCircle.x
+        val y = binding.widgetCircle.y
+        swipeUpCircle()
+        layout(400, 800)
+        assertEquals(View.VISIBLE, binding.widgetResizePanel.visibility)
+        assertEquals(64, binding.widgetResizePanel.height)
+        assertEquals(48, binding.widgetSizeSlider.height)
+        assertEquals(48, binding.widgetResizeDone.height)
+        assertEquals(binding.widgetSizeSlider.top, binding.widgetResizeDone.top)
+        assertTrue(binding.widgetSizeSlider.right < binding.widgetResizeDone.left)
+        assertEquals(View.VISIBLE, binding.widgetTime.visibility)
+        assertEquals(x, binding.widgetCircle.x, 0f)
+        assertEquals(y, binding.widgetCircle.y, 0f)
+        widget.applyInsets(20, 30, 40, 50)
+        layout(400, 800)
+        assertEquals(738, binding.widgetResizePanel.bottom)
+        assertEquals(32, binding.widgetResizePanel.left)
+        assertEquals(348, binding.widgetResizePanel.right)
+        binding.widgetResizeDone.performClick()
+        assertEquals(View.GONE, binding.widgetResizePanel.visibility)
+        swipeUpCircle()
+        binding.widgetResizeOutside.performClick()
+        assertEquals(View.GONE, binding.widgetResizePanel.visibility)
+    }
+
+    @Test
+    fun `slider scales every reading icon padding and glow at both endpoints and persists size`() {
+        swipeUpCircle()
+        for (size in listOf(56, 280, 112)) {
+            binding.widgetSizeSlider.progress = size - 56
+            layout(400, 800)
+            val scale = size / 112f
+            assertEquals(size, binding.widgetCircle.width)
+            assertEquals(size, binding.widgetCircle.height)
+            assertEquals(28f * scale, binding.widgetTimeValue.textSize, 0.01f)
+            assertEquals(14f * scale, binding.widgetAmPm.textSize, 0.01f)
+            assertEquals(28f * scale, binding.widgetDay.textSize, 0.01f)
+            assertEquals(16f * scale, binding.widgetDateValue.textSize, 0.01f)
+            assertEquals(32f * scale, binding.widgetBatteryPercent.textSize, 0.01f)
+            assertEquals((16 * scale).toInt(), binding.widgetBatteryIcon.layoutParams.width)
+            assertEquals((12 * scale).toInt(), binding.widgetCircle.paddingTop)
+            assertEquals((136 * scale).toInt(), binding.widgetChargingGlow.layoutParams.width)
+            assertEquals(size, Prefs(binding.root.context).homeWidgetCircleSize)
+            assertWithinScreen()
+        }
+        binding.widgetSizeSlider.progress = 224
+        setupRestoredWidget()
+        assertEquals(280, binding.widgetCircle.width)
+        assertEquals(224, binding.widgetSizeSlider.progress)
+        assertWithinScreen()
+        widget.applyInsets(20, 30, 40, 50)
+        layout(400, 350)
+        assertEquals(View.INVISIBLE, binding.widgetCircle.visibility)
+        layout(400, 800)
+        assertEquals(View.VISIBLE, binding.widgetCircle.visibility)
+    }
+
+    @Test
+    fun `leaving home dismisses resize popup`() {
+        swipeUpCircle()
+        widget.setActive(false)
+        assertEquals(View.GONE, binding.widgetResizePanel.visibility)
+    }
+
+    @Test
+    fun `Back dismisses resize popup without leaving home`() {
+        prefs.firstOpen = false
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        try {
+            val activity = controller.get()
+            val circle = activity.findViewById<View>(R.id.widgetCircle)
+            val root = circle.parent as ViewGroup
+            root.measure(
+                View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY),
+            )
+            root.layout(0, 0, 400, 800)
+            val x = circle.x + circle.width / 2
+            val y = circle.y + circle.height / 2
+            val down = SystemClock.uptimeMillis()
+            for ((action, offset) in listOf(MotionEvent.ACTION_DOWN to 0f, MotionEvent.ACTION_MOVE to -80f, MotionEvent.ACTION_UP to -80f)) {
+                val event = MotionEvent.obtain(down, down, action, x, y + offset, 0)
+                root.dispatchTouchEvent(event)
+                event.recycle()
+            }
+            val panel = activity.findViewById<View>(R.id.widgetResizePanel)
+            assertEquals(View.VISIBLE, panel.visibility)
+            activity.onBackPressedDispatcher.onBackPressed()
+            assertEquals(View.GONE, panel.visibility)
+            assertEquals(R.id.mainFragment, activity.findNavController(R.id.nav_host_fragment).currentDestination?.id)
+        } finally {
+            controller.pause().stop().destroy()
+        }
     }
 
     @Test

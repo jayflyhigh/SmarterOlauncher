@@ -138,6 +138,10 @@ class Prefs(context: Context) {
         get() = prefs.getFloat(HOME_WIDGET_CIRCLE_Y, 0f)
         set(value) = prefs.edit { putFloat(HOME_WIDGET_CIRCLE_Y, value) }
 
+    var homeWidgetCircleSize: Int
+        get() = prefs.getInt("HOME_WIDGET_CIRCLE_SIZE", 112).coerceIn(56, 280)
+        set(value) = prefs.edit { putInt("HOME_WIDGET_CIRCLE_SIZE", value.coerceIn(56, 280)) }
+
     var firstOpen: Boolean
         get() = prefs.getBoolean(FIRST_OPEN, true)
         set(value) = prefs.edit { putBoolean(FIRST_OPEN, value).apply() }

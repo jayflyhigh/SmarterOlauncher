@@ -104,4 +104,47 @@
         android:elevation="9dp"
         android:importantForAccessibility="no"
         android:visibility="gone" />
+
+    <View
+        android:id="@+id/widgetResizeOutside"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="10dp"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/widgetResizePanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="12dp"
+        android:background="@drawable/bg_quick_panel"
+        android:elevation="11dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:visibility="gone">
+
+        <SeekBar
+            android:id="@+id/widgetSizeSlider"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:contentDescription="@string/widget_circle_size"
+            android:max="224"
+            android:progress="56"
+            android:progressTint="?attr/primaryColor"
+            android:thumbTint="?attr/primaryColor" />
+
+        <TextView
+            android:id="@+id/widgetResizeDone"
+            style="@style/QuickBarText"
+            android:layout_width="64dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_quick_bar"
+            android:focusable="true"
+            android:text="@string/done" />
+    </LinearLayout>
 </FrameLayout>
