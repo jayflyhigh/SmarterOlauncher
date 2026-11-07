@@ -20,6 +20,7 @@ import android.widget.EditText
 import android.widget.SeekBar
 import android.view.KeyEvent
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.SwitchCompat
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.navigation.findNavController
 import app.olauncher.MainActivity
@@ -161,6 +162,22 @@ class HomeWidgetLayoutTest {
             val previewCircle = previewHost.findViewById<View>(R.id.widgetCircle)
             val previewFill = (previewCircle.background as RippleDrawable)
                 .findDrawableByLayerId(R.id.widgetCircleFill) as GradientDrawable
+            val textToggle = dialog.findViewById<SwitchCompat>(R.id.blackText)!!
+            assertFalse(textToggle.isChecked)
+            fun assertTextColor(expected: Int) {
+                for (id in listOf(R.id.widgetTimeValue, R.id.widgetAmPm, R.id.widgetDay,
+                    R.id.widgetDateValue, R.id.widgetBatteryPercent)) {
+                    assertEquals(expected, activity.findViewById<android.widget.TextView>(id).currentTextColor)
+                    assertEquals(expected, previewHost.findViewById<android.widget.TextView>(id).currentTextColor)
+                }
+            }
+            assertTextColor(Color.WHITE)
+            textToggle.isChecked = true
+            assertTextColor(Color.BLACK)
+            assertTrue(Prefs(activity).homeWidgetCircleBlackText)
+            textToggle.isChecked = false
+            assertTextColor(Color.WHITE)
+            textToggle.isChecked = true
             hex.setText("#123ABC")
             val saved = Prefs(activity)
             assertEquals(0x123ABC, saved.homeWidgetCircleColor!! and 0xffffff)
@@ -205,13 +222,15 @@ class HomeWidgetLayoutTest {
             val restoredFill = (binding.widgetCircle.background as RippleDrawable)
                 .findDrawableByLayerId(R.id.widgetCircleFill) as GradientDrawable
             assertEquals(saved.homeWidgetCircleColor, restoredFill.color?.defaultColor)
+            assertEquals(Color.BLACK, binding.widgetBatteryPercent.currentTextColor)
+            assertEquals(Color.BLACK, binding.widgetTimeValue.currentTextColor)
         } finally {
             controller.pause().stop().destroy()
         }
     }
 
     @Test
-    fun `slider scales every reading icon padding and glow at both endpoints and persists size`() {
+    fun `slider scales every reading padding and glow at both endpoints and persists size`() {
         swipeUpCircle()
         for (size in listOf(56, 280, 112)) {
             binding.widgetSizeSlider.progress = size - 56
@@ -224,7 +243,6 @@ class HomeWidgetLayoutTest {
             assertEquals(28f * scale, binding.widgetDay.textSize, 0.01f)
             assertEquals(16f * scale, binding.widgetDateValue.textSize, 0.01f)
             assertEquals(32f * scale, binding.widgetBatteryPercent.textSize, 0.01f)
-            assertEquals((16 * scale).toInt(), binding.widgetBatteryIcon.layoutParams.width)
             assertEquals((12 * scale).toInt(), binding.widgetCircle.paddingTop)
             assertEquals((136 * scale).toInt(), binding.widgetChargingGlow.layoutParams.width)
             assertEquals(size, Prefs(binding.root.context).homeWidgetCircleSize)
@@ -287,13 +305,30 @@ class HomeWidgetLayoutTest {
         assertEquals(28f, binding.widgetDay.textSize, 0f)
         assertEquals(16f, binding.widgetDateValue.textSize, 0f)
         assertEquals(32f, binding.widgetBatteryPercent.textSize, 0f)
-        assertEquals(16, binding.widgetBatteryIcon.layoutParams.width)
-        assertEquals(16, binding.widgetBatteryIcon.layoutParams.height)
         assertTrue(binding.widgetAmPm.top >= binding.widgetTimeValue.bottom)
         binding.widgetCircle.performClick()
         binding.widgetCircle.performClick()
         layout(400, 800)
         assertTrue(binding.widgetDateValue.top >= binding.widgetDay.bottom)
+    }
+
+    @Test
+    fun `battery has no icon and percentage stays centered at every circle size`() {
+        assertEquals(1, binding.widgetBattery.childCount)
+        for (size in listOf(56, 112, 280)) {
+            binding.widgetSizeSlider.progress = size - 56
+            binding.widgetCircle.performClick()
+            binding.widgetTime.visibility = View.GONE
+            binding.widgetBattery.visibility = View.VISIBLE
+            binding.widgetDate.visibility = View.GONE
+            layout(400, 800)
+            val percentage = binding.widgetBatteryPercent
+            assertEquals(android.view.Gravity.CENTER, percentage.gravity)
+            assertEquals(binding.widgetBattery.width, percentage.width)
+            assertEquals(binding.widgetBattery.height, percentage.height)
+            assertEquals(0, percentage.left)
+            assertEquals(0, percentage.top)
+        }
     }
 
     @Test

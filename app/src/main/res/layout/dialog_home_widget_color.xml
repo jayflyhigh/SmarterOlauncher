@@ -42,5 +42,13 @@
             style="@style/AppSearchColorSlider"
             android:max="100"
             android:contentDescription="@string/widget_circle_transparency" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/blackText"
+            style="@style/QuickBarText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/widget_circle_black_text" />
     </LinearLayout>
 </ScrollView>

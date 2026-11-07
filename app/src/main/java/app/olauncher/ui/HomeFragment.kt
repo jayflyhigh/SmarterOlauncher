@@ -234,9 +234,6 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
             if (charging) R.string.battery_accessibility_charging else R.string.battery_accessibility,
             percentage,
         )
-        binding.homeWidget.widgetBatteryIcon.setImageResource(
-            if (charging) R.drawable.ic_battery_charging_widget else R.drawable.ic_battery_widget,
-        )
         homeWidget?.setCharging(charging)
     }
 

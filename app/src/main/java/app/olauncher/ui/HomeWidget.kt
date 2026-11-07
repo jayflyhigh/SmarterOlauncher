@@ -155,6 +155,7 @@ class HomeWidget(
         circle.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> restorePosition() }
         applySize()
         applyColor()
+        applyTextColor()
         updateDisplay()
         updateTimeFormat()
     }
@@ -240,9 +241,14 @@ class HomeWidget(
         colorPreview?.let { preview ->
             preview.widgetBatteryPercent.text = binding.widgetBatteryPercent.text
             preview.widgetBattery.contentDescription = binding.widgetBattery.contentDescription
-            preview.widgetBatteryIcon.setImageResource(
-                if (charging) R.drawable.ic_battery_charging_widget else R.drawable.ic_battery_widget,
-            )
+        }
+    }
+
+    private fun applyTextColor() {
+        val color = if (prefs.homeWidgetCircleBlackText) Color.BLACK else Color.WHITE
+        listOfNotNull(binding, colorPreview).forEach { target ->
+            listOf(target.widgetTimeValue, target.widgetAmPm, target.widgetDay,
+                target.widgetDateValue, target.widgetBatteryPercent).forEach { it.setTextColor(color) }
         }
     }
 
@@ -274,6 +280,12 @@ class HomeWidget(
         updatePreviewDisplay()
         updatePreviewBattery()
         applyColor()
+        applyTextColor()
+        editor.blackText.isChecked = prefs.homeWidgetCircleBlackText
+        editor.blackText.setOnCheckedChangeListener { _, checked ->
+            prefs.homeWidgetCircleBlackText = checked
+            applyTextColor()
+        }
         var color = prefs.homeWidgetCircleColor
             ?: circle.context.getColorFromAttr(R.attr.primaryColorInverseTrans90)
         fun saveColor(value: Int) {
@@ -331,10 +343,6 @@ class HomeWidget(
             binding.widgetDateValue to 16f,
             binding.widgetBatteryPercent to 32f,
         ).forEach { (text, baseSize) -> text.setTextSize(TypedValue.COMPLEX_UNIT_SP, baseSize * scale) }
-        binding.widgetBatteryIcon.layoutParams = binding.widgetBatteryIcon.layoutParams.apply {
-            width = (16.dpToPx() * scale).roundToInt()
-            height = width
-        }
         binding.widgetChargingGlow.layoutParams = binding.widgetChargingGlow.layoutParams.apply {
             width = (136.dpToPx() * scale).roundToInt()
             height = width

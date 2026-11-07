@@ -50,19 +50,11 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/widgetBatteryIcon"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_battery_widget"
-                app:tint="?attr/primaryColor" />
-
             <TextView
                 android:id="@+id/widgetBatteryPercent"
                 style="@style/QuickTileText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
                 android:textSize="32sp"
                 tools:text="85%" />
         </LinearLayout>

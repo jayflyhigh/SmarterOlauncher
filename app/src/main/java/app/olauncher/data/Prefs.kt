@@ -148,6 +148,10 @@ class Prefs(context: Context) {
             if (value == null) remove("HOME_WIDGET_CIRCLE_COLOR") else putInt("HOME_WIDGET_CIRCLE_COLOR", value)
         }
 
+    var homeWidgetCircleBlackText: Boolean
+        get() = prefs.getBoolean("HOME_WIDGET_CIRCLE_BLACK_TEXT", false)
+        set(value) = prefs.edit { putBoolean("HOME_WIDGET_CIRCLE_BLACK_TEXT", value) }
+
     var firstOpen: Boolean
         get() = prefs.getBoolean(FIRST_OPEN, true)
         set(value) = prefs.edit { putBoolean(FIRST_OPEN, value).apply() }
