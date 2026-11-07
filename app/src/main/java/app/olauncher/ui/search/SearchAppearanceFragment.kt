@@ -361,9 +361,9 @@ private fun SeekBar.onUserProgress(onChange: (Int) -> Unit) {
     })
 }
 
-private class AppSearchColorPicker(
+internal class AppSearchColorPicker(
     private val binding: ViewAppSearchColorPickerBinding,
-    private val button: TextView,
+    private val button: TextView?,
     private val onChange: (Int) -> Unit,
 ) {
     private var color: Int? = null
@@ -418,6 +418,7 @@ private class AppSearchColorPicker(
         binding.brightness.progress = brightness
         binding.brightnessValue.text = binding.root.context.getString(R.string.app_search_brightness_value, brightness)
         binding.wheel.setColor(Color.HSVToColor(floatArrayOf(hsv[0], hsv[1], 1f)))
+        val button = button ?: return
         val size = (24 * button.resources.displayMetrics.density).roundToInt()
         val swatch = GradientDrawable().apply {
             shape = GradientDrawable.OVAL

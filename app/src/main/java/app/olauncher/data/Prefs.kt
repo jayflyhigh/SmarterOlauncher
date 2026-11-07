@@ -142,6 +142,12 @@ class Prefs(context: Context) {
         get() = prefs.getInt("HOME_WIDGET_CIRCLE_SIZE", 112).coerceIn(56, 280)
         set(value) = prefs.edit { putInt("HOME_WIDGET_CIRCLE_SIZE", value.coerceIn(56, 280)) }
 
+    var homeWidgetCircleColor: Int?
+        get() = if (prefs.contains("HOME_WIDGET_CIRCLE_COLOR")) prefs.getInt("HOME_WIDGET_CIRCLE_COLOR", 0) else null
+        set(value) = prefs.edit {
+            if (value == null) remove("HOME_WIDGET_CIRCLE_COLOR") else putInt("HOME_WIDGET_CIRCLE_COLOR", value)
+        }
+
     var firstOpen: Boolean
         get() = prefs.getBoolean(FIRST_OPEN, true)
         set(value) = prefs.edit { putBoolean(FIRST_OPEN, value).apply() }

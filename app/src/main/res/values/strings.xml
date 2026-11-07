@@ -16,6 +16,8 @@
     <string name="widget_date">Date</string>
     <string name="widget_circle_hint">Tap to change display; hold and drag to move; swipe up to resize</string>
     <string name="widget_circle_size">Circle size</string>
+    <string name="widget_circle_color">Circle color</string>
+    <string name="widget_circle_transparency">Circle transparency</string>
     <string name="battery_percentage">%1$d%%</string>
     <string name="battery_accessibility">%1$d%% battery</string>
     <string name="battery_accessibility_charging">%1$d%% battery, charging</string>

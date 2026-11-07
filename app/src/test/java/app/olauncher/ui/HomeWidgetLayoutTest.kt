@@ -6,6 +6,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.os.BatteryManager
 import android.os.Looper
 import android.os.SystemClock
@@ -14,6 +16,10 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.SeekBar
+import android.view.KeyEvent
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.navigation.findNavController
 import app.olauncher.MainActivity
@@ -34,6 +40,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
 import org.robolectric.util.ReflectionHelpers
+import org.robolectric.shadows.ShadowDialog
+import app.olauncher.ui.search.AppSearchColorWheel
 import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
@@ -111,7 +119,7 @@ class HomeWidgetLayoutTest {
     }
 
     @Test
-    fun `swipe up opens bottom slider without cycling or dragging and dismisses outside or Done`() {
+    fun `swipe up opens bottom slider without cycling or dragging and dismisses outside`() {
         val x = binding.widgetCircle.x
         val y = binding.widgetCircle.y
         swipeUpCircle()
@@ -119,9 +127,9 @@ class HomeWidgetLayoutTest {
         assertEquals(View.VISIBLE, binding.widgetResizePanel.visibility)
         assertEquals(64, binding.widgetResizePanel.height)
         assertEquals(48, binding.widgetSizeSlider.height)
-        assertEquals(48, binding.widgetResizeDone.height)
-        assertEquals(binding.widgetSizeSlider.top, binding.widgetResizeDone.top)
-        assertTrue(binding.widgetSizeSlider.right < binding.widgetResizeDone.left)
+        assertEquals(48, binding.widgetResizeColor.height)
+        assertEquals(binding.widgetSizeSlider.top, binding.widgetResizeColor.top)
+        assertTrue(binding.widgetSizeSlider.right < binding.widgetResizeColor.left)
         assertEquals(View.VISIBLE, binding.widgetTime.visibility)
         assertEquals(x, binding.widgetCircle.x, 0f)
         assertEquals(y, binding.widgetCircle.y, 0f)
@@ -130,11 +138,76 @@ class HomeWidgetLayoutTest {
         assertEquals(738, binding.widgetResizePanel.bottom)
         assertEquals(32, binding.widgetResizePanel.left)
         assertEquals(348, binding.widgetResizePanel.right)
-        binding.widgetResizeDone.performClick()
+        widget.hideResize()
         assertEquals(View.GONE, binding.widgetResizePanel.visibility)
         swipeUpCircle()
         binding.widgetResizeOutside.performClick()
         assertEquals(View.GONE, binding.widgetResizePanel.visibility)
+    }
+
+    @Test
+    fun `color editor supports hex wheel brightness and transparency with live persisted fill`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        try {
+            val activity = controller.get()
+            activity.findViewById<View>(R.id.widgetResizeColor).performClick()
+            val dialog = ShadowDialog.getLatestDialog() as AlertDialog
+            val hex = dialog.findViewById<EditText>(R.id.hex)!!
+            val transparency = dialog.findViewById<SeekBar>(R.id.transparency)!!
+            val wheel = dialog.findViewById<AppSearchColorWheel>(R.id.wheel)!!
+            val brightness = dialog.findViewById<SeekBar>(R.id.brightness)!!
+            assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, wheel.layoutParams.height)
+            val previewHost = dialog.findViewById<ViewGroup>(R.id.circlePreview)!!
+            val previewCircle = previewHost.findViewById<View>(R.id.widgetCircle)
+            val previewFill = (previewCircle.background as RippleDrawable)
+                .findDrawableByLayerId(R.id.widgetCircleFill) as GradientDrawable
+            hex.setText("#123ABC")
+            val saved = Prefs(activity)
+            assertEquals(0x123ABC, saved.homeWidgetCircleColor!! and 0xffffff)
+            assertEquals(saved.homeWidgetCircleColor, previewFill.color?.defaultColor)
+            val validColor = saved.homeWidgetCircleColor
+            hex.setText("#XYZ")
+            assertNotNull(hex.error)
+            assertEquals(validColor, saved.homeWidgetCircleColor)
+            hex.setText("#123ABC")
+            assertNull(hex.error)
+            transparency.progress = 50
+            assertEquals(128, Color.alpha(saved.homeWidgetCircleColor!!))
+            assertEquals(saved.homeWidgetCircleColor, previewFill.color?.defaultColor)
+            val homeTimeVisibility = activity.findViewById<View>(R.id.widgetTime).visibility
+            repeat(3) { index ->
+                previewCircle.performClick()
+                val expected = listOf(R.id.widgetBattery, R.id.widgetDate, R.id.widgetTime)[index]
+                assertEquals(View.VISIBLE, previewHost.findViewById<View>(expected).visibility)
+                assertEquals(homeTimeVisibility, activity.findViewById<View>(R.id.widgetTime).visibility)
+            }
+            assertEquals(
+                activity.findViewById<android.widget.TextView>(R.id.widgetBatteryPercent).text.toString(),
+                previewHost.findViewById<android.widget.TextView>(R.id.widgetBatteryPercent).text.toString(),
+            )
+            val circle = activity.findViewById<View>(R.id.widgetCircle)
+            val fill = (circle.background as RippleDrawable).findDrawableByLayerId(R.id.widgetCircleFill) as GradientDrawable
+            assertEquals(saved.homeWidgetCircleColor, fill.color?.defaultColor)
+            wheel.onKeyDown(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
+            assertEquals(128, Color.alpha(saved.homeWidgetCircleColor!!))
+            assertNotEquals(0x123ABC, saved.homeWidgetCircleColor!! and 0xffffff)
+            val listener = ReflectionHelpers.getField<SeekBar.OnSeekBarChangeListener>(brightness, "mOnSeekBarChangeListener")
+            listener.onProgressChanged(brightness, 0, true)
+            assertEquals(0, saved.homeWidgetCircleColor!! and 0xffffff)
+            transparency.progress = 100
+            assertEquals(0, Color.alpha(saved.homeWidgetCircleColor!!))
+            transparency.progress = 0
+            assertEquals(255, Color.alpha(saved.homeWidgetCircleColor!!))
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            shadowOf(Looper.getMainLooper()).idle()
+            assertFalse(dialog.isShowing)
+            setupRestoredWidget()
+            val restoredFill = (binding.widgetCircle.background as RippleDrawable)
+                .findDrawableByLayerId(R.id.widgetCircleFill) as GradientDrawable
+            assertEquals(saved.homeWidgetCircleColor, restoredFill.color?.defaultColor)
+        } finally {
+            controller.pause().stop().destroy()
+        }
     }
 
     @Test

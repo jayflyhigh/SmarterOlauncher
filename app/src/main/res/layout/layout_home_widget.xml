@@ -137,14 +137,14 @@
             android:progressTint="?attr/primaryColor"
             android:thumbTint="?attr/primaryColor" />
 
-        <TextView
-            android:id="@+id/widgetResizeDone"
-            style="@style/QuickBarText"
-            android:layout_width="64dp"
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/widgetResizeColor"
+            android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="8dp"
             android:background="@drawable/bg_quick_bar"
-            android:focusable="true"
-            android:text="@string/done" />
+            android:contentDescription="@string/widget_circle_color"
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_color_wheel" />
     </LinearLayout>
 </FrameLayout>

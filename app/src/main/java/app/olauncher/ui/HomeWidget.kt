@@ -9,21 +9,29 @@ import android.graphics.PixelFormat
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.text.format.DateFormat
 import android.util.TypedValue
 import android.view.GestureDetector
+import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.SeekBar
+import android.widget.FrameLayout
+import androidx.appcompat.app.AlertDialog
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.core.view.isVisible
 import app.olauncher.R
 import app.olauncher.data.Prefs
 import app.olauncher.databinding.LayoutHomeWidgetBinding
+import app.olauncher.databinding.DialogHomeWidgetColorBinding
 import app.olauncher.helper.dpToPx
+import app.olauncher.helper.getColorFromAttr
+import app.olauncher.ui.search.AppSearchColorPicker
 import app.olauncher.helper.isEinkDisplay
 import app.olauncher.helper.isSystemAnimationsDisabled
 import kotlin.math.min
@@ -50,6 +58,8 @@ class HomeWidget(
     private var charging = false
     private var active = false
     private var pulse: ValueAnimator? = null
+    private var colorDialog: AlertDialog? = null
+    private var colorPreview: LayoutHomeWidgetBinding? = null
     private val detector = GestureDetector(circle.context, object : GestureDetector.SimpleOnGestureListener() {
         override fun onDown(event: MotionEvent) = true
 
@@ -86,7 +96,7 @@ class HomeWidget(
             override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
         })
         binding.widgetResizeOutside.setOnClickListener { hideResize() }
-        binding.widgetResizeDone.setOnClickListener { hideResize() }
+        binding.widgetResizeColor.setOnClickListener { showColorEditor() }
         ViewCompat.addAccessibilityAction(circle, circle.context.getString(R.string.widget_circle_size)) { _, _ ->
             showResize()
             true
@@ -144,6 +154,7 @@ class HomeWidget(
         binding.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> restorePosition() }
         circle.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> restorePosition() }
         applySize()
+        applyColor()
         updateDisplay()
         updateTimeFormat()
     }
@@ -157,6 +168,7 @@ class HomeWidget(
 
     fun setCharging(value: Boolean) {
         charging = value
+        updatePreviewBattery()
         updateChargingGlow()
     }
 
@@ -206,9 +218,101 @@ class HomeWidget(
     }
 
     fun hideResize() {
+        colorDialog?.dismiss()
+        colorDialog = null
+        colorPreview = null
         binding.widgetResizeOutside.isVisible = false
         binding.widgetResizePanel.isVisible = false
         onResizeVisibilityChanged(false)
+    }
+
+    private fun applyColor() {
+        val color = prefs.homeWidgetCircleColor ?: return
+        val background = circle.background.mutate() as RippleDrawable
+        (background.findDrawableByLayerId(R.id.widgetCircleFill) as GradientDrawable).setColor(color)
+        colorPreview?.widgetCircle?.let { preview ->
+            val previewBackground = preview.background.mutate() as RippleDrawable
+            (previewBackground.findDrawableByLayerId(R.id.widgetCircleFill) as GradientDrawable).setColor(color)
+        }
+    }
+
+    private fun updatePreviewBattery() {
+        colorPreview?.let { preview ->
+            preview.widgetBatteryPercent.text = binding.widgetBatteryPercent.text
+            preview.widgetBattery.contentDescription = binding.widgetBattery.contentDescription
+            preview.widgetBatteryIcon.setImageResource(
+                if (charging) R.drawable.ic_battery_charging_widget else R.drawable.ic_battery_widget,
+            )
+        }
+    }
+
+    private fun showColorEditor() {
+        if (colorDialog != null) return
+        val editor = DialogHomeWidgetColorBinding.inflate(LayoutInflater.from(circle.context))
+        editor.colorPicker.root.isVisible = true
+        val wheel = editor.colorPicker.wheel
+        (wheel.parent as ViewGroup).removeView(wheel)
+        editor.wheelHost.addView(wheel, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+        ))
+        val preview = LayoutHomeWidgetBinding.inflate(LayoutInflater.from(circle.context))
+        (preview.widgetCircle.parent as ViewGroup).removeView(preview.widgetCircle)
+        editor.circlePreview.addView(preview.widgetCircle)
+        preview.widgetCircle.background = preview.widgetCircle.background.mutate()
+        colorPreview = preview
+        var previewDisplay = display
+        fun updatePreviewDisplay() {
+            preview.widgetTime.isVisible = previewDisplay == 0
+            preview.widgetBattery.isVisible = previewDisplay == 1
+            preview.widgetDate.isVisible = previewDisplay == 2
+            preview.widgetAmPm.isVisible = !DateFormat.is24HourFormat(circle.context)
+        }
+        preview.widgetCircle.setOnClickListener {
+            previewDisplay = (previewDisplay + 1) % 3
+            updatePreviewDisplay()
+        }
+        updatePreviewDisplay()
+        updatePreviewBattery()
+        applyColor()
+        var color = prefs.homeWidgetCircleColor
+            ?: circle.context.getColorFromAttr(R.attr.primaryColorInverseTrans90)
+        fun saveColor(value: Int) {
+            color = value
+            prefs.homeWidgetCircleColor = value
+            applyColor()
+        }
+        val picker = AppSearchColorPicker(editor.colorPicker, null) { rgb ->
+            saveColor((rgb and 0xffffff) or (Color.alpha(color) shl 24))
+        }
+        picker.setColor(color)
+        editor.transparency.progress = (100 - Color.alpha(color) * 100 / 255f).roundToInt()
+        fun updateTransparencyLabel() {
+            editor.transparencyValue.text = circle.context.getString(
+                R.string.app_search_transparency_value, editor.transparency.progress,
+            )
+        }
+        updateTransparencyLabel()
+        editor.transparency.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                val alpha = ((100 - progress) * 255 / 100f).roundToInt()
+                saveColor((color and 0xffffff) or (alpha shl 24))
+                updateTransparencyLabel()
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
+        })
+        colorDialog = AlertDialog.Builder(circle.context)
+            .setTitle(R.string.widget_circle_color)
+            .setView(editor.root)
+            .setPositiveButton(R.string.done, null)
+            .create().also { dialog ->
+                dialog.setOnDismissListener {
+                    colorDialog = null
+                    colorPreview = null
+                }
+                dialog.show()
+            }
     }
 
     private fun applySize() {

@@ -6,7 +6,7 @@
             <solid android:color="@android:color/white" />
         </shape>
     </item>
-    <item>
+    <item android:id="@+id/widgetCircleFill">
         <shape android:shape="oval">
             <solid android:color="?attr/primaryColorInverseTrans90" />
             <stroke
