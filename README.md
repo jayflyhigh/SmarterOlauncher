@@ -26,11 +26,16 @@ License: [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 ### ACES search pages and appearance
 
-The home screen's bottom bar opens Command search using Search Anything and keeps
-the ACES panel styling. Tap the separate circle to cycle through time, battery,
+The home screen has no search bar; search remains available from the ACES menu.
+Tap the circle to cycle through time, battery,
 and date (for example, `Mon` / `05 Jan`); these displays do not open apps yet.
 Hold the circle, drag, and release to place it. Its position is saved and adapts
-to screen size and system insets, staying above the command search bar.
+to screen size and system insets, allowing placement across the home screen
+while staying clear of system bars and display cutouts.
+The circle uses large time, weekday, and battery readings with smaller AM/PM,
+date, and battery-icon details. While charging, a green halo pulses around the
+circle on the visible home screen. With system animations disabled or on an
+e-ink display, the charging halo stays steady instead.
 
 Apps, Contacts, Search Engines, and Search Anything use a black page with a
 pill-shaped search field, a fixed icon/title/results heading, and rounded charcoal

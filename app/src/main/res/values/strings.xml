@@ -14,7 +14,6 @@
     <string name="widget_am_pm">AM or PM</string>
     <string name="widget_battery">Battery</string>
     <string name="widget_date">Date</string>
-    <string name="widget_command_search">Command search</string>
     <string name="widget_circle_hint">Tap to change display; hold and drag to move</string>
     <string name="battery_percentage">%1$d%%</string>
     <string name="battery_accessibility">%1$d%% battery</string>

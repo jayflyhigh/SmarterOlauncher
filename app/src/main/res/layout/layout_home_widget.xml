@@ -5,29 +5,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <LinearLayout
-        android:id="@+id/homeWidgetPanel"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:layout_marginHorizontal="12dp"
-        android:layout_marginBottom="12dp"
-        android:background="@drawable/bg_quick_panel"
-        android:elevation="8dp"
-        android:orientation="vertical"
-        android:padding="11dp">
-
-        <TextView
-            android:id="@+id/widgetCommandSearch"
-            style="@style/QuickBarText"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_margin="5dp"
-            android:background="@drawable/bg_quick_bar"
-            android:focusable="true"
-            android:text="@string/widget_command_search" />
-    </LinearLayout>
-
     <FrameLayout
         android:id="@+id/widgetCircle"
         android:layout_width="112dp"
@@ -37,15 +14,33 @@
         android:focusable="true"
         android:padding="12dp">
 
-        <TextClock
+        <LinearLayout
             android:id="@+id/widgetTime"
-            style="@style/QuickTileText"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:format12Hour="hh:mm\na"
-            android:format24Hour="HH:mm"
-            android:textSize="20sp"
-            tools:text="08:05\nAM" />
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextClock
+                android:id="@+id/widgetTimeValue"
+                style="@style/QuickTileText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:format12Hour="hh:mm"
+                android:format24Hour="HH:mm"
+                android:textSize="28sp"
+                tools:text="08:05" />
+
+            <TextClock
+                android:id="@+id/widgetAmPm"
+                style="@style/QuickTileText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:format12Hour="a"
+                android:format24Hour=""
+                android:textSize="14sp"
+                tools:text="AM" />
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/widgetBattery"
@@ -57,8 +52,8 @@
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/widgetBatteryIcon"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_battery_widget"
                 app:tint="?attr/primaryColor" />
@@ -68,19 +63,45 @@
                 style="@style/QuickTileText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="20sp"
+                android:textSize="32sp"
                 tools:text="85%" />
         </LinearLayout>
 
-        <TextClock
+        <LinearLayout
             android:id="@+id/widgetDate"
-            style="@style/QuickTileText"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:format12Hour="EEE\ndd MMM"
-            android:format24Hour="EEE\ndd MMM"
-            android:textSize="18sp"
-            android:visibility="gone"
-            tools:text="Mon\n05 Jan" />
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextClock
+                android:id="@+id/widgetDay"
+                style="@style/QuickTileText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:format12Hour="EEE"
+                android:format24Hour="EEE"
+                android:textSize="28sp"
+                tools:text="Mon" />
+
+            <TextClock
+                android:id="@+id/widgetDateValue"
+                style="@style/QuickTileText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:format12Hour="dd MMM"
+                android:format24Hour="dd MMM"
+                android:textSize="16sp"
+                tools:text="05 Jan" />
+        </LinearLayout>
     </FrameLayout>
+
+    <View
+        android:id="@+id/widgetChargingGlow"
+        android:layout_width="136dp"
+        android:layout_height="136dp"
+        android:elevation="9dp"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
 </FrameLayout>

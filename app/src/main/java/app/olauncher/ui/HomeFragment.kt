@@ -25,7 +25,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.core.view.setPadding
 import androidx.lifecycle.Observer
@@ -95,14 +94,12 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
             val nav = insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars())
             val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
             val status = insets.getInsets(WindowInsetsCompat.Type.statusBars())
-            homeWidget?.applyInsets(max(nav.left, cutout.left), max(status.top, cutout.top), max(nav.right, cutout.right))
-            val params = binding.homeWidget.homeWidgetPanel.layoutParams as ViewGroup.MarginLayoutParams
-            val left = 12.dpToPx() + max(nav.left, cutout.left)
-            val right = 12.dpToPx() + max(nav.right, cutout.right)
-            params.bottomMargin = 12.dpToPx() + max(nav.bottom, cutout.bottom)
-            params.setMargins(left, params.topMargin, right, params.bottomMargin)
-            binding.homeWidget.homeWidgetPanel.layoutParams = params
-            positionHomeContentAboveWidget()
+            homeWidget?.applyInsets(
+                max(nav.left, cutout.left),
+                max(status.top, cutout.top),
+                max(nav.right, cutout.right),
+                max(nav.bottom, cutout.bottom),
+            )
             insets
         }
         quickActions = QuickActionsMenu(this, binding.quickActions, viewModel)
@@ -110,30 +107,6 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
 
     private fun openQuickActions() {
         quickActions?.show()
-    }
-
-    private fun positionHomeContentAboveWidget() {
-        val panel = binding.homeWidget.homeWidgetPanel
-        if (panel.height == 0) {
-            panel.doOnLayout {
-                if (_binding != null) positionHomeContentAboveWidget()
-            }
-            return
-        }
-
-        val panelBottomMargin = (panel.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
-        val reservedHeight = panel.height + panelBottomMargin
-        (binding.homeAppsLayout.layoutParams as FrameLayout.LayoutParams).apply {
-            bottomMargin = reservedHeight
-            binding.homeAppsLayout.layoutParams = this
-        }
-        val promptMargin = reservedHeight + 8.dpToPx()
-        listOf(binding.firstRunTips, binding.setDefaultLauncher).forEach { prompt ->
-            (prompt.layoutParams as FrameLayout.LayoutParams).apply {
-                bottomMargin = promptMargin
-                prompt.layoutParams = this
-            }
-        }
     }
 
     override fun onStop() {
@@ -144,6 +117,7 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
     override fun onResume() {
         super.onResume()
         populateHomeScreen(false)
+        homeWidget?.setActive(true)
         registerBatteryReceiver()
         viewModel.isOlauncherDefault()
         if (prefs.showStatusBar) showStatusBar()
@@ -151,6 +125,7 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
     }
 
     override fun onPause() {
+        homeWidget?.setActive(false)
         if (batteryReceiverRegistered) {
             requireContext().unregisterReceiver(batteryReceiver)
             batteryReceiverRegistered = false
@@ -165,7 +140,6 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
             // R.id.recents -> {}
             R.id.clock -> openClockApp()
             R.id.date -> openCalendarApp()
-            R.id.widgetCommandSearch -> openSwipeSearch(SearchMode.ALL_SEARCH)
             R.id.setDefaultLauncher -> viewModel.resetLauncherLiveData.call()
             R.id.tvScreenTime -> openScreenTimeDigitalWellbeing()
 
@@ -250,6 +224,7 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
         binding.homeWidget.widgetBatteryIcon.setImageResource(
             if (charging) R.drawable.ic_battery_charging_widget else R.drawable.ic_battery_widget,
         )
+        homeWidget?.setCharging(charging)
     }
 
     override fun onLongClick(view: View): Boolean {
@@ -347,7 +322,6 @@ class HomeFragment : BaseFragment(), View.OnClickListener, View.OnLongClickListe
         binding.setDefaultLauncher.setOnLongClickListener(this)
         binding.tvScreenTime.setOnClickListener(this)
         binding.tvScreenTime.setOnLongClickListener(this)
-        binding.homeWidget.widgetCommandSearch.setOnClickListener(this)
 
         // These fire only on d-pad/keyboard events; touch is consumed by ViewSwipeTouchListener
         binding.homeApp1.setOnClickListener(this)

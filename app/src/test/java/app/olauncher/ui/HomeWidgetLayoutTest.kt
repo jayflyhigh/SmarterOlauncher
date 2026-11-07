@@ -1,13 +1,19 @@
 package app.olauncher.ui
 
+import android.app.Activity
+import android.animation.ValueAnimator
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.os.BatteryManager
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.widget.TextClock
+import android.view.ViewGroup
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.navigation.findNavController
 import app.olauncher.MainActivity
@@ -25,7 +31,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
+import org.robolectric.util.ReflectionHelpers
 import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
@@ -70,25 +78,144 @@ class HomeWidgetLayoutTest {
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(700))
     }
 
-    private fun assertClearOfBar() {
+    private fun assertWithinScreen() {
         val circle = binding.widgetCircle
         assertTrue(circle.x >= 0)
         assertTrue(circle.y >= 0)
         assertTrue(circle.x + circle.width <= binding.root.width)
-        assertTrue(circle.y + circle.height < binding.homeWidgetPanel.top)
+        assertTrue(circle.y + circle.height <= binding.root.height)
     }
 
     @Test
-    fun `bar is a search control and circle retains clock and abbreviated date formats`() {
-        assertFalse(binding.widgetCommandSearch is TextClock)
-        assertEquals("Command search", binding.widgetCommandSearch.text.toString())
-        assertEquals(56, binding.widgetCommandSearch.layoutParams.height)
+    fun `widget has only circle and glow and retains clock and abbreviated date formats`() {
+        assertEquals(2, (binding.root as ViewGroup).childCount)
         assertEquals(binding.widgetCircle.layoutParams.width, binding.widgetCircle.layoutParams.height)
-        assertEquals("hh:mm\na", binding.widgetTime.format12Hour.toString())
-        assertEquals("HH:mm", binding.widgetTime.format24Hour.toString())
-        assertEquals("EEE\ndd MMM", binding.widgetDate.format12Hour.toString())
-        assertEquals("EEE\ndd MMM", binding.widgetDate.format24Hour.toString())
-        assertClearOfBar()
+        assertEquals("hh:mm", binding.widgetTimeValue.format12Hour.toString())
+        assertEquals("HH:mm", binding.widgetTimeValue.format24Hour.toString())
+        assertEquals("a", binding.widgetAmPm.format12Hour.toString())
+        assertEquals("", binding.widgetAmPm.format24Hour.toString())
+        assertEquals("EEE", binding.widgetDay.format12Hour.toString())
+        assertEquals("EEE", binding.widgetDay.format24Hour.toString())
+        assertEquals("dd MMM", binding.widgetDateValue.format12Hour.toString())
+        assertEquals("dd MMM", binding.widgetDateValue.format24Hour.toString())
+        assertWithinScreen()
+    }
+
+    @Test
+    fun `primary readings are larger with secondary details underneath`() {
+        assertEquals(28f, binding.widgetTimeValue.textSize, 0f)
+        assertEquals(14f, binding.widgetAmPm.textSize, 0f)
+        assertEquals(28f, binding.widgetDay.textSize, 0f)
+        assertEquals(16f, binding.widgetDateValue.textSize, 0f)
+        assertEquals(32f, binding.widgetBatteryPercent.textSize, 0f)
+        assertEquals(16, binding.widgetBatteryIcon.layoutParams.width)
+        assertEquals(16, binding.widgetBatteryIcon.layoutParams.height)
+        assertTrue(binding.widgetAmPm.top >= binding.widgetTimeValue.bottom)
+        binding.widgetCircle.performClick()
+        binding.widgetCircle.performClick()
+        layout(400, 800)
+        assertTrue(binding.widgetDateValue.top >= binding.widgetDay.bottom)
+    }
+
+    @Test
+    fun `AM PM is hidden for 24 hour time and restored for 12 hour time`() {
+        val resolver = binding.root.context.contentResolver
+        val original = Settings.System.getString(resolver, Settings.System.TIME_12_24)
+        try {
+            Settings.System.putString(resolver, Settings.System.TIME_12_24, "24")
+            widget.setActive(true)
+            assertEquals(View.GONE, binding.widgetAmPm.visibility)
+            Settings.System.putString(resolver, Settings.System.TIME_12_24, "12")
+            widget.setActive(true)
+            assertEquals(View.VISIBLE, binding.widgetAmPm.visibility)
+        } finally {
+            Settings.System.putString(resolver, Settings.System.TIME_12_24, original)
+        }
+    }
+
+    @Test
+    fun `green charging halo pulses in every display and stops when inactive or unplugged`() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        try {
+            controller.get().setContentView(binding.root)
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(32))
+            layout(400, 800)
+            widget.setActive(true)
+            widget.setCharging(true)
+            val glow = binding.widgetChargingGlow
+            assertEquals(View.VISIBLE, glow.visibility)
+            val animator = ReflectionHelpers.getField<ValueAnimator>(widget, "pulse")
+            assertEquals(ValueAnimator.INFINITE, shadowOf(animator).actualRepeatCount)
+            assertEquals(ValueAnimator.REVERSE, animator.repeatMode)
+            assertEquals(1400L, animator.duration)
+            val initialAlpha = glow.alpha
+            animator.currentPlayTime = 700
+            assertTrue("Pulse alpha: $initialAlpha -> ${glow.alpha}", glow.alpha > initialAlpha)
+            animator.currentPlayTime = 1400
+            assertEquals(1f, glow.alpha, 0.01f)
+            animator.currentPlayTime = 2100
+            assertTrue(glow.alpha < 1f)
+            repeat(3) {
+                binding.widgetCircle.performClick()
+                assertEquals(View.VISIBLE, glow.visibility)
+            }
+
+            assertEquals(binding.widgetCircle.x - 12, glow.x, 0f)
+            assertEquals(binding.widgetCircle.y - 12, glow.y, 0f)
+
+            widget.setActive(false)
+            assertEquals(View.GONE, glow.visibility)
+            assertEquals(1f, glow.alpha, 0f)
+            assertFalse(animator.isStarted)
+            widget.setActive(true)
+            assertEquals(View.VISIBLE, glow.visibility)
+            widget.setCharging(false)
+            assertEquals(View.GONE, glow.visibility)
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(700))
+            assertEquals(1f, glow.alpha, 0f)
+            widget.setCharging(true)
+            controller.get().setContentView(View(controller.get()))
+            assertEquals(1f, glow.alpha, 0f)
+        } finally {
+            widget.setActive(false)
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test
+    @Config(sdk = [28])
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `charging halo renders green at the circle edge and transparent in the center`() {
+        val bitmap = Bitmap.createBitmap(136, 136, Bitmap.Config.ARGB_8888)
+        binding.widgetChargingGlow.background.setBounds(0, 0, 136, 136)
+        binding.widgetChargingGlow.background.draw(Canvas(bitmap))
+        val edge = bitmap.getPixel(124, 68)
+        assertTrue(Color.alpha(edge) > 0)
+        assertTrue(Color.green(edge) > Color.red(edge))
+        assertTrue(Color.green(edge) > Color.blue(edge))
+        assertEquals(0, Color.alpha(bitmap.getPixel(68, 68)))
+    }
+
+    @Test
+    fun `charging halo stays steady when system animations are disabled`() {
+        val resolver = binding.root.context.contentResolver
+        val original = Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        try {
+            Settings.Global.putFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+            controller.get().setContentView(binding.root)
+            layout(400, 800)
+            widget.setActive(true)
+            widget.setCharging(true)
+            assertEquals(View.VISIBLE, binding.widgetChargingGlow.visibility)
+            assertEquals(1f, binding.widgetChargingGlow.alpha, 0f)
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(700))
+            assertEquals(1f, binding.widgetChargingGlow.alpha, 0f)
+        } finally {
+            widget.setActive(false)
+            Settings.Global.putFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, original)
+            controller.pause().stop().destroy()
+        }
     }
 
     @Test
@@ -109,11 +236,12 @@ class HomeWidgetLayoutTest {
     }
 
     @Test
-    fun `hold drag release clamps above search bar and persists position`() {
+    fun `hold drag release uses full screen height and persists position`() {
         holdCircle()
         touch(MotionEvent.ACTION_MOVE, -100f, 1000f)
         touch(MotionEvent.ACTION_UP, -100f, 1000f)
-        assertClearOfBar()
+        assertWithinScreen()
+        assertEquals(788f, binding.widgetCircle.y + binding.widgetCircle.height, 0f)
         assertEquals(0f, prefs.homeWidgetCircleX, 0f)
         assertEquals(1f, prefs.homeWidgetCircleY, 0f)
         assertEquals(View.VISIBLE, binding.widgetTime.visibility)
@@ -124,11 +252,12 @@ class HomeWidgetLayoutTest {
         assertEquals(x, binding.widgetCircle.x, 0f)
         assertEquals(y, binding.widgetCircle.y, 0f)
         layout(800, 400)
-        widget.applyInsets(30, 40, 50)
-        assertClearOfBar()
+        widget.applyInsets(30, 40, 50, 60)
+        assertWithinScreen()
         assertTrue(binding.widgetCircle.x >= 42)
         assertTrue(binding.widgetCircle.y >= 52)
         assertTrue(binding.widgetCircle.x + binding.widgetCircle.width <= 738)
+        assertEquals(328f, binding.widgetCircle.y + binding.widgetCircle.height, 0f)
     }
 
     private fun setupRestoredWidget() {
@@ -165,15 +294,15 @@ class HomeWidgetLayoutTest {
     }
 
     @Test
-    fun `circle avoids system insets and hides if window cannot fit it above bar`() {
-        widget.applyInsets(20, 30, 40)
+    fun `circle avoids system insets and hides if window cannot fit it`() {
+        widget.applyInsets(20, 30, 40, 50)
         assertTrue(binding.widgetCircle.y >= 42)
         assertTrue(binding.widgetCircle.x + binding.widgetCircle.width <= 348)
         layout(400, 180)
         assertEquals(View.INVISIBLE, binding.widgetCircle.visibility)
         layout(400, 800)
         assertEquals(View.VISIBLE, binding.widgetCircle.visibility)
-        assertClearOfBar()
+        assertWithinScreen()
     }
 
     @Test
@@ -189,14 +318,16 @@ class HomeWidgetLayoutTest {
     }
 
     @Test
-    fun `home command bar navigates to Search Anything`() {
+    fun `home reserves no space for search bar and ACES menu still opens Search Anything`() {
         prefs.firstOpen = false
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         try {
             val activity = controller.get()
             val navController = activity.findNavController(R.id.nav_host_fragment)
             assertEquals(R.id.mainFragment, navController.currentDestination?.id)
-            activity.findViewById<View>(R.id.widgetCommandSearch).performClick()
+            val apps = activity.findViewById<View>(R.id.homeAppsLayout)
+            assertEquals(0, (apps.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin)
+            activity.findViewById<View>(R.id.searchAll).performClick()
             assertEquals(R.id.universalSearchFragment, navController.currentDestination?.id)
             assertEquals(
                 SearchMode.ALL_SEARCH.name,
@@ -224,6 +355,16 @@ class HomeWidgetLayoutTest {
             assertEquals(View.VISIBLE, battery.visibility)
             assertEquals("85% battery, charging", battery.contentDescription.toString())
             assertEquals("85%", activity.findViewById<android.widget.TextView>(R.id.widgetBatteryPercent).text.toString())
+            val glow = activity.findViewById<View>(R.id.widgetChargingGlow)
+            assertEquals(View.VISIBLE, glow.visibility)
+            activity.sendBroadcast(Intent(Intent.ACTION_BATTERY_CHANGED).apply {
+                putExtra(BatteryManager.EXTRA_LEVEL, 84)
+                putExtra(BatteryManager.EXTRA_SCALE, 100)
+                putExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_DISCHARGING)
+            })
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(View.GONE, glow.visibility)
+            assertEquals("84% battery", battery.contentDescription.toString())
             assertNull(shadowOf(activity).nextStartedActivity)
         } finally {
             controller.pause().stop().destroy()
