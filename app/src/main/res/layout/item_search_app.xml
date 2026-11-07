@@ -64,7 +64,7 @@
             android:contentDescription="@string/call"
             android:padding="11dp"
             android:src="@drawable/ic_call"
-            android:tint="@color/search_secondary" />
+            android:tint="@android:color/white" />
 
         <ImageButton
             android:id="@+id/contactTextAction"
@@ -74,7 +74,7 @@
             android:contentDescription="@string/text_message"
             android:padding="11dp"
             android:src="@drawable/ic_message"
-            android:tint="@color/search_secondary" />
+            android:tint="@android:color/white" />
 
         <ImageButton
             android:id="@+id/contactWhatsAppAction"
@@ -84,7 +84,7 @@
             android:contentDescription="@string/whatsapp"
             android:padding="11dp"
             android:src="@drawable/ic_whatsapp"
-            android:tint="@color/search_secondary" />
+            android:tint="@android:color/white" />
     </LinearLayout>
 
     <ImageButton

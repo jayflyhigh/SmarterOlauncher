@@ -95,6 +95,23 @@ class SearchRedesignTest {
     }
 
     @Test
+    fun `one column contact shortcut icons are white`() {
+        withPage(SearchMode.CONTACTS_ONLY) { _, fragment, _ ->
+            val list = fragment.requireView().findViewById<RecyclerView>(R.id.recyclerView)
+            val adapter = list.adapter as SearchResultsAdapter
+            for ((position, item) in adapter.currentList.withIndex()) {
+                if (item !is SearchItem.ContactItem) continue
+                val row = list.findViewHolderForAdapterPosition(position)!!.itemView
+                assertEquals(View.VISIBLE, row.findViewById<View>(R.id.contactActions).visibility)
+                for (id in listOf(R.id.contactCallAction, R.id.contactTextAction, R.id.contactWhatsAppAction)) {
+                    assertEquals(android.graphics.Color.WHITE,
+                        row.findViewById<android.widget.ImageButton>(id).imageTintList?.defaultColor)
+                }
+            }
+        }
+    }
+
+    @Test
     fun `all pages have one pill field fixed heading counter and consistently labelled tiles in both layouts`() {
         val titles = listOf("Apps", "Contacts", "Search Engines", "Search Anything")
         for ((index, mode) in SearchMode.entries.withIndex()) for (columns in 1..2) {

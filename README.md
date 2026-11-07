@@ -50,6 +50,7 @@ e-ink display, the charging halo stays steady instead.
 Apps, Contacts, Search Engines, and Search Anything use a black page with a
 pill-shaped search field, a fixed icon/title/results heading, and rounded charcoal
 result tiles. Each result has a type label and a separate three-dot action menu.
+One-column contact tiles use white phone, message, and WhatsApp shortcut icons.
 Menus open above or below the selected tile within the visible area and scroll
 when necessary. Contacts retain normal details taps, two-column quick actions,
 long-press details, and command handling. Search engine aliases and ordering are
