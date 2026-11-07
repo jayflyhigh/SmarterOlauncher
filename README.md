@@ -27,6 +27,8 @@ License: [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html)
 ### ACES search pages and appearance
 
 The home screen has no search bar; search remains available from the ACES menu.
+Hold an empty area of the home screen to open launcher settings using Android's
+standard long-press timing, without an additional delay.
 Tap the circle to cycle through time, battery,
 and date (for example, `Mon` / `05 Jan`); these displays do not open apps yet.
 Hold the circle, drag, and release to place it. Its position is saved and adapts

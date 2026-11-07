@@ -15,6 +15,7 @@ import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.SeekBar
@@ -529,6 +530,33 @@ class HomeWidgetLayoutTest {
         assertEquals("example.battery", restored.batteryAppPackage)
         assertEquals("example.battery.Settings", restored.batteryAppClassName)
         assertEquals("owner", restored.batteryAppUser)
+    }
+
+    @Test
+    fun `holding home opens launcher settings without an extra delay`() {
+        prefs.firstOpen = false
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        try {
+            val activity = controller.get()
+            val navController = activity.findNavController(R.id.nav_host_fragment)
+            val home = activity.findViewById<View>(R.id.mainLayout)
+            val downTime = SystemClock.uptimeMillis()
+            val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, 10f, 10f, 0)
+            try {
+                assertTrue(home.dispatchTouchEvent(down))
+            } finally {
+                down.recycle()
+            }
+            assertEquals(R.id.mainFragment, navController.currentDestination?.id)
+            shadowOf(Looper.getMainLooper()).idleFor(
+                Duration.ofMillis(
+                    (ViewConfiguration.getLongPressTimeout() + ViewConfiguration.getTapTimeout()).toLong(),
+                ),
+            )
+            assertEquals(R.id.settingsFragment, navController.currentDestination?.id)
+        } finally {
+            controller.pause().stop().destroy()
+        }
     }
 
     @Test
